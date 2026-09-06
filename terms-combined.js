@@ -228,29 +228,57 @@ body.tp-active > *:not(#tp-root):not(#p3nav):not(#pp-mob-overlay):not(.p3-footer
     });
   });
 
-  /* Contents rail follows the reader. One observer, no scroll maths. */
+  /* Contents rail follows the reader.
+
+     This was an IntersectionObserver watching a thin band under the nav, and
+     it marked the section BEFORE the one being read. The band was the top
+     156px of the viewport, so a normal-length section centred on screen sat
+     entirely below it and the band still held the tail of the section above.
+     Measured on staging: 2 of 21 sections marked correctly, and the two that
+     worked were the only ones taller than the viewport.
+
+     So read the positions instead. The current section is the last one whose
+     top has passed a reading line just below the nav, which is true wherever
+     the section starts and however tall it is. */
   var links = {};
+  var order = [];
   root.querySelectorAll('.tp-toc a').forEach(function(a) {
-    links[a.getAttribute('href').slice(1)] = a;
+    var id = a.getAttribute('href').slice(1);
+    links[id] = a;
+    order.push(id);
   });
-  if ('IntersectionObserver' in window) {
-    var visible = {};
-    var spy = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        if (e.isIntersecting) visible[e.target.id] = true;
-        else delete visible[e.target.id];
-      });
-      // Mark the FIRST section in view, in document order. Marking whichever
-      // entry arrived last lights up a heading further down the page than the
-      // one being read, which is what a naive callback does at the top.
-      var order = Object.keys(links);
-      var current = order.find(function(id) { return visible[id]; });
-      order.forEach(function(id) {
-        links[id].classList.toggle('tp-current', id === current);
-      });
-    }, { rootMargin: '-88px 0px -70% 0px' });
-    root.querySelectorAll('.tp-section').forEach(function(s) { spy.observe(s); });
+  var sections = order.map(function(id) { return document.getElementById(id); });
+  var READING_LINE = 130; /* the nav is 82px tall; clear it, then a little air */
+  var ticking = false;
+
+  function markCurrent() {
+    ticking = false;
+    /* Before the first heading reaches the line, the reader is in the first
+       section, not in none of them. */
+    var current = order[0];
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i] && sections[i].getBoundingClientRect().top <= READING_LINE) {
+        current = order[i];
+      }
+    }
+    /* The last sections are shorter than the run of page left below them, so
+       they can never reach the line. At the bottom, the last one is what is
+       being read. */
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+      current = order[order.length - 1];
+    }
+    order.forEach(function(id) {
+      links[id].classList.toggle('tp-current', id === current);
+    });
   }
+  function requestMark() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(markCurrent);
+  }
+  window.addEventListener('scroll', requestMark, { passive: true });
+  window.addEventListener('resize', requestMark);
+  markCurrent();
 
   /* A deep link from another page (/app-privacy-policy sends readers to the
      privacy sections) lands on the right heading once the page is built. */
