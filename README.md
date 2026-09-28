@@ -19,13 +19,16 @@ https://tparis7.github.io/P3-Terms-Policies/terms-combined.js
 
 ## Where it renders
 
-Both legal URLs load this same current document, so the two can never drift:
+One URL carries the whole document:
 
 - `https://www.pulseofp3.org/app-terms-conditions`
-- `https://www.pulseofp3.org/app-privacy-policy` (kept because the App Store
-  and Play listings point at it; it opens on the privacy sections)
 
-`/privacy` and `/terms-conditions` already redirect to the first of these.
+The older legal URLs redirect (301) into it, because the app and the store
+listings still link them (since Sep 28 2026 for the last two):
+
+- `/privacy` and `/terms-conditions` to the top
+- `/app-privacy-policy` and `/privacy-policy` to `#information-we-collect`
+- `/app-community-guidelines` to `#community-guidelines`
 
 ## Editing the text
 
